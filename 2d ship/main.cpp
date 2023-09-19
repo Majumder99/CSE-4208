@@ -1,0 +1,731 @@
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include <iostream>
+
+using namespace std;
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height);
+void processInput(GLFWwindow* window);
+
+// settings
+const unsigned int SCR_WIDTH = 800;
+const unsigned int SCR_HEIGHT = 600;
+float rotateAngle = 0.0;
+float translate_X = -0.7;
+float translate_Y = -0.5;
+float scale_X = 1.5;
+float scale_Y = 1.5;
+
+const char* vertexShaderSource = "#version 330 core\n"
+"layout (location = 0) in vec3 aPos;\n"
+"uniform mat4 transform;\n"
+"void main()\n"
+"{\n"
+"   gl_Position = transform * vec4(aPos, 1.0);\n"
+"}\0";
+const char* fragmentShaderSource = "#version 330 core\n"
+"out vec4 FragColor;\n"
+"uniform vec4 colorInfo;\n"
+"void main()\n"
+"{\n"
+"   FragColor = colorInfo;\n"
+"}\n\0";
+const char* fragmentShaderSource1 = "#version 330 core\n"
+"out vec4 FragColor;\n"
+"void main()\n"
+"{\n"
+"   FragColor = vec4(0.33f, 0.19f, 0.09f, 1.0f);\n"
+"}\n\0";
+
+int main()
+{
+    // glfw: initialize and configure
+    // ------------------------------
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
+
+    // glfw window creation
+    // --------------------
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "CSE 4208: Computer Graphics Laboratory", NULL, NULL);
+    if (window == NULL)
+    {
+        std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cout << "Failed to initialize GLAD" << std::endl;
+        return -1;
+    }
+
+
+    // build and compile our shader program
+    // ------------------------------------
+    // vertex shader
+    unsigned int vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader);
+    // check for shader compile errors
+    int success;
+    char infoLog[512];
+    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // fragment shader
+    unsigned int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    glCompileShader(fragmentShader);
+    // check for shader compile errors
+    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // link shaders
+    unsigned int shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    // check for linking errors
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    //asdasd
+    unsigned int vertexShader1 = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader1, 1, &vertexShaderSource, NULL);
+    glCompileShader(vertexShader1);
+    // check for shader compile errors
+    glGetShaderiv(vertexShader1, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(vertexShader1, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // fragment shader
+    unsigned int fragmentShader1 = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader1, 1, &fragmentShaderSource1, NULL);
+    glCompileShader(fragmentShader1);
+    // check for shader compile errors
+    glGetShaderiv(fragmentShader1, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        glGetShaderInfoLog(fragmentShader1, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+    // link shaders
+    unsigned int shaderProgram1 = glCreateProgram();
+    glAttachShader(shaderProgram1, vertexShader1);
+    glAttachShader(shaderProgram1, fragmentShader1);
+    glLinkProgram(shaderProgram1);
+    // check for linking errors
+    glGetProgramiv(shaderProgram1, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram1, 512, NULL, infoLog);
+        std::cout << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+    glDeleteShader(vertexShader1);
+    glDeleteShader(fragmentShader1);
+
+    // set up vertex data (and buffer(s)) and configure vertex attributes
+
+    //triangle
+    float vertices[] = { 
+       0.153971738293723,0.23576235127922,0,
+0.159417255628444,0.231135247617718,0,
+0.164856428671124,0.224960136698345,0,
+0.168935808453134,0.220328803508816,0,
+0.175741119048525,0.21415792211747,0,
+0.179820498830535,0.209526588927941,0,
+0.186625809425926,0.203355707536596,0,
+0.192064982468606,0.197180596617223,0,
+0.196138017958576,0.191001256169824,0,
+0.202924295677845,0.180186353004868,0,
+0.211076710949825,0.169375679367939,0,
+0.217882021545215,0.163204797976593,0,
+0.221948712743145,0.155477450271324,0,
+0.224655610680404,0.149293880295897,0,
+0.228728646170373,0.143114539848498,0,
+0.231429199815592,0.135382962615201,0,
+0.236862028566232,0.127659844437959,0,
+0.239562582211451,0.119928267204662,0,
+0.24498906667005,0.110657141769549,0,
+0.249043069283898,0.0998337795485403,0,
+0.251737278637076,0.0905541950573737,0,
+0.255784936958884,0.0781828255784937,0,
+0.259845283864773,0.068907470615354,0,
+0.263911975062702,0.0611801229100844,0,
+0.269325770937221,0.0488129829592316,0,
+0.273379773551069,0.0379896207382219,0,
+0.277452809041039,0.0318102802908223,0,
+0.285636945773221,0.0287396429432441,0,
+0.295199908642194,0.0287692496394329,0,
+0.307482458032508,0.0257113008759353,0,
+0.319777696006902,0.025749366628178,0,
+0.327974521323165,0.0257747437963398,0,
+0.337531139900098,0.0242563432346585,0,
+0.348466584613822,0.0258381867167443,0,
+0.360761822588217,0.025876252468987,0,
+0.37168457871786,0.0243620814353326,0,
+0.379881404034123,0.0243874586034946,0,
+0.389438022611056,0.0228690580418131,0,
+0.40036712303274,0.0229028942660289,0,
+0.412656016715094,0.0213929527604015,0,
+0.422218979584068,0.0214225594565904,0,
+0.434526906142543,0.0245566397245733,0,
+0.442723731458806,0.024582016892735,0,
+0.449567107806439,0.0276991790486098,0,
+0.459123726383372,0.0261807784869285,0,
+0.471418964357767,0.0262188442391713,0,
+0.476883514568609,0.0262357623512792,0,
+0.48234172048741,0.0247046732055171,0,
+0.489172408250963,0.024725820845652,0,
+0.500101508672647,0.0247596570698678,0,
+0.506932196436199,0.0247808047100026,0,
+0.515122677460422,0.0232581746202942,0,
+0.521953365223974,0.023279322260429,0,
+0.530150190540237,0.0233046994285908,0,
+0.541079290961921,0.0233385356528066,0,
+0.549269771986144,0.0218159055630984,0,
+0.558845423439198,0.0249415267750272,0,
+0.572506798966303,0.0249838220552969,0,
+0.579337486729855,0.0250049696954317,0,
+0.590260242859499,0.0234907986617773,0,
+0.602568169417974,0.0266248789297602,0,
+0.610764994734237,0.026650256097922,0,
+0.620327957603211,0.0266798627941108,0,
+0.629897264764224,0.0282574767481695,0,
+0.639460227633198,0.0282870834443583,0,
+0.653121603160303,0.028329378724628,0,
+0.665410496842657,0.0268194372190008,0,
+0.683170285027893,0.0268744210833513,0,
+0.699563935660419,0.0269251754196749,0,
+0.714591448740235,0.0269717002279715,0,
+0.724154411609208,0.0270013069241603,0,
+0.739181924689023,0.027047831732457,0,
+0.750123713694788,0.0301776824724131,0,
+0.750155435154991,0.0379177187617634,0,
+0.750212533783355,0.0518497840825943,0,
+0.75164845854851,0.0688820934471923,0,
+0.753078039021625,0.0843663955539203,0,
+0.75450761949474,0.0998506976606481,0,
+0.757316026104647,0.118435243811143,0,
+0.760111744130472,0.133923775445898,0,
+0.761554013187668,0.152504092068366,0,
+0.764349731213493,0.167992623703121,0,
+0.767151793531359,0.185029162595746,0,
+0.769953855849225,0.202065701488371,0,
+0.77138343632234,0.217550003595099,0,
+0.776917773745627,0.234595001543778,0,
+0.783830937305706,0.254740243536223,0,
+0.787992792884242,0.270233004699005,0,
+0.793527130307529,0.287278002647684,0,
+0.797695330178105,0.304318771068336,0,
+0.799099533483058,0.313611044143584,0,
+0.801895251508884,0.329099575778339,0,
+0.78961270211857,0.332157524541836,0,
+0.780056083541637,0.333675925103517,0,
+0.769126983119953,0.333642088879302,0,
+0.755465607592848,0.333599793599032,0,
+0.740438094513033,0.333553268790735,0,
+0.728142856538638,0.333515203038493,0,
+0.718579893669665,0.333485596342304,0,
+0.707650793247981,0.333451760118088,0,
+0.700820105484429,0.333430612477953,0,
+0.692623280168166,0.333405235309791,0,
+0.684426454851903,0.33337985814163,0,
+0.673497354430219,0.333346021917414,0,
+0.659835978903114,0.333303726637144,0,
+0.646180947668049,0.334809438614745,0,
+0.636617984799076,0.334779831918556,0,
+0.624322746824681,0.334741766166313,0,
+0.612027508850287,0.33470370041407,0,
+0.602464545981313,0.334674093717882,0,
+0.591535445559629,0.334640257493666,0,
+0.584704757796077,0.334619109853531,0,
+0.577867725740484,0.333049954955526,0,
+0.576457178143491,0.322209674622409,0,
+0.576431800975329,0.316017645590928,0,
+0.575014909086295,0.30362935799994,0,
+0.573604361489301,0.292789077666823,0,
+0.572187469600267,0.280400790075835,0,
+0.570789610587354,0.272656524258458,0,
+0.569391751574441,0.26491225844108,0,
+0.568000236853569,0.258715999881573,0,
+0.552960035189673,0.255573460557536,0,
+0.54340341661274,0.257091861119217,0,
+0.532474316191056,0.257058024895002,0,
+0.522905009030042,0.255480410940943,0,
+0.509237289210896,0.253890108402803,0,
+0.49147750102566,0.253835124538452,0,
+0.480548400603976,0.253801288314237,0,
+0.466893369368912,0.255307000291837,0,
+0.455964268947228,0.255273164067621,0,
+0.445028824233503,0.253691320585535,0,
+0.430007655445728,0.255192803035109,0,
+0.413620349105243,0.256690055956655,0,
+0.398592836025427,0.256643531148359,0,
+0.390396010709164,0.256618153980197,0,
+0.37810077273477,0.256580088227954,0,
+0.365805534760376,0.256542022475712,0,
+0.356248916183443,0.258060423037393,0,
+0.346685953314469,0.258030816341204,0,
+0.328919820837192,0.256427825218983,0,
+0.32208913307364,0.256406677578849,0,
+0.305695482441114,0.256355923242525,0,
+0.290667969361299,0.256309398434228,0,
+0.279738868939615,0.256275562210013,0,
+0.26607749341251,0.256233266929743,0,
+0.256514530543536,0.256203660233554,0,
+0.242859499308472,0.257709372211155,0,
+0.229191779489326,0.256119069673015,0,
+0.218262679067642,0.256085233448799,0,
+0.203228821695787,0.254490701382632,0,
+0.192293376982062,0.252908857900546,0,
+0.182730414113089,0.252879251204358,0,
+0.179991794715627,0.251322784890434,0,
+0.164951593051731,0.248180245566397,0,
+0.156754767735468,0.248154868398235,0,
+0.153971738293723, 0.23576235127922, 0,
+
+0.636668739135399, 0.327163889981517, 0,
+0.636668739135399, 0.337163889981517, 0,
+0.636668739135399,0.347163889981517,0,
+0.636706804887642,0.356451933528737,0,
+0.636751214931925,0.367287984333828,0,
+0.63954058866571,0.381228508710713,0,
+0.639623064462236,0.401352603063024,0,
+0.639711884550803,0.423024704673205,0,
+0.639838770391612,0.453984849830607,0,
+0.639876836143854,0.463272893377828,0,
+0.639940279064259,0.478752965956529,0,
+0.639978344816502,0.488041009503749,0,
+0.640067164905068,0.50971311111393,0,
+0.641503089670223,0.526745420478529,0,
+0.63887866752949,0.553053084806266,0,
+0.640295559418524,0.565441372397254,0,
+0.637614038649427,0.577816971404161,0,
+0.636343065477323,0.601032850744185,0,
+0.636406508397727,0.616512923322886,0,
+0.637829744578802,0.630449218171744,0,
+0.637893187499206,0.645929290750445,0,
+0.637969319003692,0.664505377844886,0,
+0.635313175402756,0.683073005883273,0,
+0.636768133044033,0.704749337021481,0,
+0.63686329742464,0.727969445889533,0,
+0.634181776655542,0.74034504489644,0,
+0.634251563867987,0.757373124733011,0,
+0.634321351080432,0.774401204569582,0,
+0.635763620137628,0.79298152119205,0,
+0.634479958381444,0.813101386016334,0,
+0.645459813139451,0.825519280303511,0,
+0.657755051113846,0.825557346055753,0,
+0.67276353131754,0.82095984909044,0,
+0.68091594658952,0.810149175453511,0,
+0.683610155942698,0.800869590962344,0,
+0.684938227743166,0.791585776943151,0,
+0.684900161990923,0.78229773339593,0,
+0.68621554520731,0.769917904860996,0,
+0.684785964734195,0.754433602754268,0,
+0.686114036534663,0.745149788735075,0,
+0.68606962649038,0.734313737929984,0,
+0.686031560738137,0.725025694382764,0,
+0.685993494985894,0.715737650835543,0,
+0.6845829473889,0.704897370502425,0,
+0.684544881636658,0.695609326955205,0,
+0.684500471592374,0.684773276150114,0,
+0.684456061548091,0.673937225345024,0,
+0.684405307211768,0.661553167282063,0,
+0.684379930043606,0.655361138250582,0,
+0.684341864291363,0.646073094703362,0,
+0.68429745424708,0.635237043898271,0,
+0.684259388494837,0.625949000351051,0,
+0.684221322742595,0.61666095680383,0,
+0.684183256990352,0.607372913256609,0,
+0.682747332225196,0.590340603892011,0,
+0.682715610764994,0.582600567602661,0,
+0.682683889304792,0.57486053131331,0,
+0.68265216784459,0.56712049502396,0,
+0.682614102092347,0.557832451476739,0,
+0.681216243079434,0.550088185659362,0,
+0.68115914445107,0.536156120338531,0,
+0.681133767282908,0.529964091307051,0,
+0.679729563977955,0.520671818231803,0,
+0.679691498225713,0.511383774684583,0,
+0.680987848565978,0.494359924376039,0,
+0.680962471397816,0.488167895344558,0,
+0.682271510322163,0.474240059551754,0,
+0.682227100277879,0.463404008746664,0,
+0.682170001649515,0.449471943425833,0,
+0.682138280189313,0.441731907136482,0,
+0.682081181560949,0.427799841815652,0,
+0.682062148684828,0.423155820042041,0,
+0.682005050056464,0.40922375472121,0,
+0.68196064001218,0.39838770391612,0,
+0.681922574259938,0.389099660368899,0,
+0.681878164215655,0.378263609563808,0,
+0.681833754171371,0.367427558758718,0,
+0.681789344127088,0.356591507953627,0,
+0.681738589790765,0.344207449890666,0,
+0.681738589790765, 0.334207449890666, 0,
+
+
+0.658702507687167,0.376736749946073,0,
+
+0.688702507687167,0.376736749946073,0,
+0.696892988711389,0.375214119856365,0,
+0.706455951580363,0.375243726552554,0,
+0.713286639343915,0.375264874192688,0,
+0.721483464660178,0.37529025136085,0,
+0.72694801487102,0.375307169472958,0,
+0.732412565081862,0.375324087585066,0,
+0.737877115292704,0.375341005697174,0,
+0.746073940608967,0.375366382865336,0,
+0.752904628372519,0.375387530505471,0,
+0.761101453688782,0.375412907673632,0,
+0.769298279005045,0.375438284841794,0,
+0.78295965453215,0.375480580122064,0,
+0.793888754953834,0.37551441634628,0,
+0.803451717822808,0.375544023042468,0,
+0.81028240558636,0.375565170682603,0,
+0.823943781113465,0.375607465962873,0,
+0.83487922582719,0.377189309444959,0,
+0.845801981956833,0.375675138411304,0,
+0.853998807273096,0.375700515579466,0,
+0.86492790769478,0.375734351803682,0,
+0.873118388719002,0.374211721713974,0,
+0.879949076482555,0.374232869354108,0,
+0.896342727115081,0.374283623690432,0,
+0.911370240194896,0.374330148498729,0,
+0.922305684908621,0.375911991980815,0,
+0.931868647777594,0.375941598677003,0,
+0.940065473093857,0.375966975845165,0,
+0.94962843596283,0.375996582541354,0,
+0.959191398831804,0.376026189237543,0,
+0.966028430887397,0.377595344135548,0,
+0.978330013153832,0.37918141714566,0,
+0.981068632551293,0.380737883459584,0,
+0.983864350577119,0.396226415094339,0,
+0.982517245900529,0.400866207339923,0,
+0.978469587578722,0.413237576818803,0,
+0.973036758828082,0.420960694996045,0,
+0.9648526220959,0.424031332343624,0,
+0.956662141071677,0.425553962433332,0,
+0.943000765544572,0.425511667153062,0,
+0.932065320830848,0.423929823670976,0,
+0.919770082856453,0.423891757918734,0,
+0.903370087931887,0.42229299632454,0,
+0.880145749535809,0.422221094348081,0,
+0.871955268511586,0.42374372443779,0,
+0.861026168089902,0.423709888213574,0,
+0.843272724196706,0.425202911607093,0,
+0.830983830514352,0.426712853112721,0,
+0.822787005198089,0.426687475944559,0,
+0.811851560484365,0.425105632462473,0,
+0.802294941907432,0.426624033024154,0,
+0.791365841485748,0.426590196799939,0,
+0.780424052479983,0.423460346059983,0,
+0.773593364716431,0.423439198419848,0,
+0.761291782449996,0.421853125409735,0,
+0.74626426937018,0.421806600601438,0,
+0.736701306501207,0.42177699390525,0,
+0.721673793421392,0.421730469096953,0,
+0.709378555446997,0.42169240334471,0,
+0.701181730130734,0.421667026176549,0,
+0.69025262970905,0.421633189952333,0,
+0.688905525032461,0.426272982197916,0,
+0.678905525032461, 0.426272982197916, 0,
+
+
+0.688905525032461, 0.426272982197916, 0,
+0.695774278548256, 0.435582173385272, 0,
+0.706709723261981, 0.437164016867357, 0,
+0.720390131665207, 0.441850333921237, 0,
+0.738168952726565, 0.446549339559198, 0,
+0.749123430316411, 0.452775204814894, 0,
+0.760058875030135, 0.45435704829698, 0,
+0.777837696091493, 0.459056053934941, 0,
+0.79561017286081, 0.462207052315032, 0,
+0.806539273282494, 0.462240888539248, 0,
+0.820200648809599, 0.462283183819517, 0,
+0.835221817597374, 0.460781701369944, 0,
+0.844778436174307, 0.459263300808262, 0,
+0.863904361912254, 0.45932251420064, 0,
+0.881645117221369, 0.45473347629138, 0,
+0.899398561114565, 0.453240452897861, 0,
+0.917126627839599, 0.445555400472861, 0,
+0.925285387403619, 0.436292734093802, 0,
+0.923970004187232, 0.448672562628736, 0,
+0.915836621791374, 0.464127258039275, 0,
+0.913142412438196, 0.473406842530442, 0,
+0.906368823303007, 0.487317760211138, 0,
+0.90232750927324, 0.501237136947888, 0,
+0.895591985890294, 0.524436098175804, 0,
+0.888831085339187, 0.541443030372241, 0,
+0.87256432054747, 0.572352421193319, 0,
+0.864449971027733, 0.592451138377468, 0,
+0.854963139663245, 0.61099761877572, 0,
+0.848170517651935, 0.620264514682806, 0,
+0.838658309119285, 0.632618966049578, 0,
+0.834578929337275, 0.637250299239108, 0,
+0.827786307325965, 0.646517195146193, 0,
+0.825066720804625, 0.64960475060588, 0,
+0.818286787377396, 0.661967661028706, 0,
+0.804669821894574, 0.672761416553527, 0,
+0.793791475809214, 0.685111638392272, 0,
+0.781540647879103, 0.695909623445119, 0,
+0.770668646085783, 0.709807852541735, 0,
+0.762497197937682, 0.715974504405053, 0,
+0.748867543870779, 0.723672245414134, 0,
+0.740696095722678, 0.729838897277453, 0,
+0.727060097363735, 0.735988631028663, 0,
+0.714796580849543, 0.743690601565771, 0,
+0.705265339440771, 0.751401031158933, 0,
+0.69300816721862, 0.760651008953911, 0,
+0.695702376571798, 0.751371424462744, 0,
+0.701128861030397, 0.742100299027631, 0,
+0.703810381799495, 0.729724700020724, 0,
+0.706504591152673, 0.720445115529558, 0,
+0.707832662953141, 0.711161301510364, 0,
+0.711867632690868, 0.695693917515744, 0,
+0.713202048783376, 0.687958110754421, 0,
+0.715896258136554, 0.678678526263254, 0,
+0.717230674229062, 0.670942719501931, 0,
+0.718565090321571, 0.663206912740607, 0,
+0.721259299674749, 0.65392732824944, 0,
+0.722581027183176, 0.643095506972377, 0,
+0.722555650015014, 0.636903477940896, 0,
+0.722517584262772, 0.627615434393676, 0,
+0.722485862802569, 0.619875398104325, 0,
+0.722435108466246, 0.607491340041365, 0,
+0.722384354129922, 0.595107281978404, 0,
+0.722339944085639, 0.584271231173313, 0,
+0.720942085072726, 0.576526965355936, 0,
+0.720884986444362, 0.562594900035105, 0,
+0.719480783139409, 0.553302626959857, 0,
+0.718070235542415, 0.54246234662674, 0,
+0.715287206100671, 0.530069829507725, 0,
+0.712504176658926, 0.51767731238871, 0,
+0.711106317646013, 0.509933046571333, 0,
+0.708329632496309, 0.499088536710188, 0,
+0.705571980222726, 0.492888048622654, 0,
+0.704180465501854, 0.486691790063147, 0,
+0.70140378035215, 0.475847280202002, 0,
+0.700018609923318, 0.471199028900365, 0,
+0.698614406618365, 0.461906755825117, 0,
+0.695850410052742, 0.454158260479713, 0,
+0.69446523962391, 0.449510009178075, 0,
+0.694433518163708, 0.441769972888725, 0,
+0.706709723261981, 0.437164016867357, 0, 
+
+
+
+    };
+
+    unsigned int VBO, VAO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
+    // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
+    glBindVertexArray(0);
+
+
+    // uncomment this call to draw in wireframe polygons.
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    // render loop
+    // -----------
+    while (!glfwWindowShouldClose(window))
+    {
+        // input
+        // -----
+        processInput(window);
+
+        // render
+        // ------
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // create transformations
+        /*glm::mat4 trans = glm::mat4(1.0f); // make sure to initialize matrix to identity matrix first
+        trans = glm::translate(trans, glm::vec3(translate_X, translate_Y, 0.0f));
+        trans = glm::rotate(trans, glm:: radians(rotateAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+        trans = glm::scale(trans,glm::vec3(scale_X, scale_Y, 1.0));*/
+        glm::mat4 translationMatrix;
+        glm::mat4 rotationMatrix;
+        glm::mat4 scaleMatrix;
+        glm::mat4 modelMatrix;
+        glm::mat4 identityMatrix = glm::mat4(1.0f);
+        translationMatrix = glm::translate(identityMatrix, glm::vec3(-0.6, -0.6, 0.0f));
+        rotationMatrix = glm::rotate(identityMatrix, glm::radians(rotateAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+        scaleMatrix = glm::scale(identityMatrix, glm::vec3(1.2, 1.7, 1.0f));
+        modelMatrix = translationMatrix * rotationMatrix * scaleMatrix;
+        //modelMatrix = rotationMatrix * scaleMatrix;
+
+        // get matrix's uniform location and set matrix
+        glUseProgram(shaderProgram);
+        unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
+        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+
+        int colorLocation = glGetUniformLocation(shaderProgram, "colorInfo");
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(0.0, 0.0, 0.0, 1.0)));
+
+        // draw our first triangle
+        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        //lower body
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(1.1, 0.3, 0.0, 1.0)));
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 156);
+        glDrawArrays(GL_LINE_STRIP, 0, 156); // lower
+        //glDrawArrays(GL_LINE_STRIP, 157, 217); // full flag  
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(1.1, 0.25, 1.1, 1.0)));//  vertical
+        glDrawArrays(GL_TRIANGLE_FAN, 157, 79);//  vertical
+        glDrawArrays(GL_LINE_STRIP, 157, 79); //  vertical
+
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(.5, 0.5, 1, 1.0)));
+        glDrawArrays(GL_TRIANGLE_FAN, 237, 62);// horizontal
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(0.07, 1.25, 0.82, 1.0)));// triangle
+        glDrawArrays(GL_TRIANGLE_FAN, 295, 80);// triangle
+        glDrawArrays(GL_LINE_STRIP, 295, 80);// triangle
+
+
+        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+        // -------------------------------------------------------------------------------
+
+        glm::mat4 translationMatrix1;
+        glm::mat4 rotationMatrix1;
+        glm::mat4 scaleMatrix1;
+        glm::mat4 modelMatrix1;
+        glm::mat4 identityMatrix1 = glm::mat4(1.0f);
+        translationMatrix1 = glm::translate(identityMatrix1, glm::vec3(-0.9, -.48, 0.0f));
+        rotationMatrix1 = glm::rotate(identityMatrix1, glm::radians(-rotateAngle), glm::vec3(0.0f, 0.0f, 1.0f));
+        scaleMatrix1 = glm::scale(identityMatrix1, glm::vec3(1.1, 1.2, 1.0f));
+        modelMatrix1 =  rotationMatrix1 * scaleMatrix1 * translationMatrix1;
+
+        glUseProgram(shaderProgram);
+        unsigned int transformLoc1 = glGetUniformLocation(shaderProgram, "transform");
+        glUniformMatrix4fv(transformLoc1, 1, GL_FALSE, glm::value_ptr(modelMatrix1));
+
+        int colorLocation1 = glGetUniformLocation(shaderProgram, "colorInfo");
+        glUniform4fv(colorLocation1, 1, glm::value_ptr(glm::vec4(0.0, 0.0, 0.0, 1.0)));
+
+        // draw our first triangle
+        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        //lower body
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(1.1, 0.25, 1.1, 1.0)));//  vertical
+        glDrawArrays(GL_TRIANGLE_FAN, 157, 76);//  vertical
+         
+        glDrawArrays(GL_LINE_STRIP, 157, 76); //  vertical
+        glUniform4fv(colorLocation, 1, glm::value_ptr(glm::vec4(0.07, 0.25, 0.82, 1.0)));// triangle
+        glDrawArrays(GL_TRIANGLE_FAN, 295, 80);// triangle
+        glDrawArrays(GL_LINE_STRIP, 295, 80);// triangle
+
+
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // optional: de-allocate all resources once they've outlived their purpose:
+    // ------------------------------------------------------------------------
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteProgram(shaderProgram);
+
+    // glfw: terminate, clearing all previously allocated GLFW resources.
+    // ------------------------------------------------------------------
+    glfwTerminate();
+    return 0;
+}
+
+// process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
+// ---------------------------------------------------------------------------------------------------------
+void processInput(GLFWwindow* window)
+{
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        rotateAngle += 1;
+    }
+    if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+    {
+        rotateAngle -= 1;
+    }
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        translate_Y += 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        translate_Y -= 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        translate_X += 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        translate_X -= 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS)
+    {
+        scale_X += 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS)
+    {
+        scale_X -= 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_Y) == GLFW_PRESS)
+    {
+        scale_Y += 0.01;
+    }
+    if (glfwGetKey(window, GLFW_KEY_U) == GLFW_PRESS)
+    {
+        scale_Y -= 0.01;
+    }
+}
+
+// glfw: whenever the window size changed (by OS or user resize) this callback function executes
+// ---------------------------------------------------------------------------------------------
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    // make sure the viewport matches the new window dimensions; note that width and
+    // height will be significantly larger than specified on retina displays.
+    glViewport(0, 0, width, height);
+}
